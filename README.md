@@ -123,12 +123,19 @@ Saying that, I'm thinking about function that we need to perform. For me it's a 
 I think that we can easily translate it to endpoint such 
 POST rest/v1/billings/pay-pending-invoices
 
-1. I will start with adding such REST endpoint. As a novice Kotlin developer, I don't want to spend much time on figuring out the way we could write nice API tests here, so I am taking concious shortcut here. 
+1. I start with adding such REST endpoint. As a novice Kotlin developer, I don't want to spend much time on figuring out the way we could write nice API tests here, so I am taking conscious shortcut here. 
 I think that API could initially return the list invoices ids' that were paid in the process. A quick test, as expected give me empty list
    ```
    curl -X POST localhost:7000/rest/v1/billings/pay-pending-invoices
    []
    ```
+2. Next, I find out which invoices are pending, so I could attempt payment process. 
+   I extend the AntaeusDal, so it's possible to fetch invoices by status. 
+   I add the test package and test if indeed the fetching works correctly and is filtering by status. 
+   I copied the init mechanism for SQLite from AntaeusApp. 
+   
+3. 
+
 
 
 
