@@ -86,3 +86,51 @@ The code given is structured as follows. Feel free however to modify the structu
 * [Sqlite3](https://sqlite.org/index.html) - Database storage engine
 
 Happy hacking 😁!
+
+### Seb's reasoning
+
+>As most "Software as a Service" (SaaS) companies, Pleo needs to charge a subscription fee every month. 
+>Our database contains a few invoices for the different markets in which we operate. 
+>Your task is to build the logic that will schedule payment of those invoices on the first of the month.
+>While this may seem simple, there is space for some decisions to be taken and you will be expected to justify them.
+
+Design choices 
+
+I assume that we operate in a single Bounded Context from Domain-Driven-Design perspective and Antaeus's covering currently Invoice/Billing domain. 
+
+We have a Customer entity that's represented by Customer ID and currency.
+We have an Invoice entity that's represented by Invoice ID, customer, amount and status.
+
+We have an external Payments Provider service that could result in 
+- either successful payment
+- rejection of payment
+- technical errors (no customer found, currency mismatch, network error)
+
+The task is to build the logic that will schedule payment of those invoices on the first of month.
+
+The first decision is that I made is to separate the "scheduler" part from main application. Two reasons
+- first if we intend run the Antaeus in HA mode (multiple instances of application), running a scheduler in each instance does not look like the good idea.
+- if we use the container orchestrator (like Kubernetes) we can easily manage [cron jobs on a repeating schedule.](#https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
+
+It implies that our application should expose the API to pay for pending invoices.
+
+So how we should design the endpoint?
+
+I'm one of the REST skeptics. My criticism is coming from DDD/CQRS position, as my thinking is much more action/intent oriented than REST noun/resource orientation.
+
+Saying that, I'm thinking about function that we need to perform. For me it's a command like PayPendingInvoices()
+
+I think that we can easily translate it to endpoint such 
+POST rest/v1/billings/pay-pending-invoices
+
+1. I will start with adding such REST endpoint. As a novice Kotlin developer, I don't want to spend much time on figuring out the way we could write nice API tests here, so I am taking concious shortcut here. 
+I think that API could initially return the list invoices ids' that were paid in the process. A quick test, as expected give me empty list
+   ```
+   curl -X POST localhost:7000/rest/v1/billings/pay-pending-invoices
+   []
+   ```
+
+
+
+
+

@@ -65,7 +65,8 @@ fun main() {
 
     // Create REST web service
     AntaeusRest(
-        invoiceService = invoiceService,
-        customerService = customerService
+            invoiceService = invoiceService,
+            customerService = customerService,
+            billingService = billingService
     ).run()
 }
