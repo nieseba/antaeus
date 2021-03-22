@@ -10,6 +10,8 @@ package io.pleo.antaeus.core.external
 
 import io.pleo.antaeus.models.Invoice
 
+
+
 interface PaymentProvider {
     /*
         Charge a customer's account the amount from the invoice.
@@ -26,3 +28,4 @@ interface PaymentProvider {
 
     fun charge(invoice: Invoice): Boolean
 }
+

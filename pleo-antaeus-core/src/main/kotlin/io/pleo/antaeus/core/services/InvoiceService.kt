@@ -25,4 +25,8 @@ class InvoiceService(private val dal: AntaeusDal) {
     fun markInvoiceAsPaid(id: Int): Int {
         return dal.updateInvoice(id, InvoiceStatus.PAID)
     }
+
+    fun markInvoiceAsFailed(id: Int): Int {
+        return dal.updateInvoice(id, InvoiceStatus.FAILED)
+    }
 }

@@ -4,12 +4,15 @@
 
 package io.pleo.antaeus.rest
 
+import arrow.core.Either
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.*
 import io.pleo.antaeus.core.exceptions.EntityNotFoundException
+import io.pleo.antaeus.core.exceptions.PaymentException
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
 import io.pleo.antaeus.core.services.InvoiceService
+import io.pleo.antaeus.core.services.SuccessfullyCharged
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -81,13 +84,21 @@ class AntaeusRest(
                     }
                     // URL: /rest/v1/billings
                     path("billings") {
-                        //URL: /rest/v1/billings/pay-pending-invoices
-                        post ("pay-pending-invoices") {
-                            it.json(billingService.chargeForPendingInvoices())
+                        //URL: /rest/v1/billings/charge-for-pending-invoices
+                        post ("charge-for-pending-invoices") {
+                            it.json(billingService.chargeForPendingInvoices()
+                                .map{ i: Either<PaymentException, SuccessfullyCharged> ->
+                                    when (i) {
+                                        is Either.Left -> ChargingResponse(i.a.invoice.id, i.a.javaClass.simpleName)
+                                        is Either.Right -> ChargingResponse(i.b.invoice.id, i.b.javaClass.simpleName)
+                                    }
+                                })
                         }
                     }
                 }
             }
         }
     }
+
+    private class ChargingResponse(val id: Int, val type: String)
 }

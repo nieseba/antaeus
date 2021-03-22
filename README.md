@@ -118,7 +118,7 @@ So how we should design the endpoint?
 
 I'm one of the REST skeptics. My criticism is coming from DDD/CQRS position, as my thinking is much more action/intent oriented than REST noun/resource orientation.
 
-Saying that, I'm thinking about function that we need to perform. For me it's a command like PayPendingInvoices()
+Saying that, I'm thinking about function that we need to perform. For me it's a command like ChargeForPendingInvoices()
 
 I think that we can easily translate it to endpoint such 
 POST rest/v1/billings/charge-for-pending-invoices
@@ -137,7 +137,79 @@ I think that API could initially return the list invoices ids' that were paid in
 3. First attempt to connect charging process with fetching pending invoices and marking successfully charged invoices as paid. Happy path scenario is covered.
 I added tests for BillingService that checks if charging and marking as paid processes are connected properly. Also, new function in AntaeusDal got tested.
    
-4. 
+4. There're three immediate not-happy kinds of scenarios that I should think about
+   * payment provider return false that account did not allow the charge
+      * this is a domain error, product owner/manager should decide what do in such case. 
+      I would say for purposes of the task, that we should mark the account as "account-did-not-allow-charge" that allows the CS team to take an action. 
+        That error is retriable, so we can continue to try charge for invoice.
+        Invoice can remain in pending state.
+   * `CustomerNotFoundException` / `CurrencyMismatchException`
+      * this is a domain error, product owner/manager should decide what do in such case.
+        I would say for purposes of the task, that we should flag the invoice as "customer-not-found" or "currency-mismatch-exception" 
+        that allows the CS team to take an action. That error is not-retriable, so we should not continue to try charge for customer invoices before its fixed.
+        Invoice should change to failed state.
+   * `NetworkException`: when a network error happens.
+      * this is a technical error, 
+        This is a lovely error, as we can not determine if charge was successful or not.
+        Our integration with payment provider should have the option to provide "idempotency" mechanism.
+        It's necessary to make sure that when we retry a charge for already charged invoice
+        Payment provider should reject the charge as a duplicate (it can be based on some stable id - like e.g. invoice id)
+        For the purpose of the task, I assume that payment provider returns me True and does not charge twice
+        Invoice can remain in pending state.
+   
+   That implies that `AccountDidNotAllowToCharge` and `NetworkException` are two events that allow invoices to retry charging safely
+   `CustomerNotFoundException` / `CurrencyMismatchException` are two events that blocks recharge process unless it's solved through manual process 
+   that I put a bit out of the scope for this task.
+   
+   That implies that I need to mark invoices as failed if they ended up in such a state.
+    
+5. I would like to rework the exceptions, as I hope that we can get better in Kotlin!
+
+   So I did a quick search and find Arrow library which reminds me cats or scalaz from Scala!
+
+Checkpoint
+
+   ```
+   curl -X POST localhost:7000/rest/v1/billings/charge-for-pending-invoices
+   
+   [{"id":1,"type":"CustomerAccountDidAllowChargePaymentException"},{"id":11,"type":"CustomerAccountDidAllowChargePaymentException"},(...),{"id":991,"type":"SuccessfullyCharged"}]
+   ```
+
+Current mocked payment provider gives randomly successful payment or that customer account did not allow charge
+And every 10th invoice in database is pending one (9/10 are already paid)
+So that result makes sense for me. 
+
+If I repeat charging process I would expect a bunch of more paid invoices
+ ```
+   curl -X POST localhost:7000/rest/v1/billings/charge-for-pending-invoices
+   
+   [{"id":1,"type":"SuccessfullyCharged"},{"id":11,"type":"CustomerAccountDidAllowChargePaymentException"},(...),{"id":971,"type":"SuccessfullyCharged"},{"id":981,"type":"CustomerAccountDidAllowChargePaymentException"}]
+   ```
+That's good, for invoice #1 (that failed first time) charging process was repeated, Charging process for Invoice #991 (that was paid) was not repeated.
+
+After few repeats, I see that there're no more pendign invoices 
+
+```
+curl -X POST localhost:7000/rest/v1/billings/charge-for-pending-invoices
+[]
+```
+
+Quick look into SQLite on Docker says that it's ok. All invoices are paid
+
+```
+sqlite> SELECT count(*) FROM Invoice WHERE status='PAID';
+1000
+```
+
+Let's commit and think about #6.
+
+
+
+
+   
+  
+           
+
 
 
 

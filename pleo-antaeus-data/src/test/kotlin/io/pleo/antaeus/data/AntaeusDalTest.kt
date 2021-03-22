@@ -10,8 +10,10 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.transactions.transactionManager
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.math.BigDecimal
@@ -44,24 +46,40 @@ class AntaeusDalTest {
     // Set up data access layer.
     val dal = AntaeusDal(db = db)
 
-    val customers = (1..10).mapNotNull {
-        dal.createCustomer(
-                currency = Currency.values()[Random.nextInt(0, Currency.values().size)]
-        )
-    }
+    @BeforeEach
+    fun initData() {
+        // Drop all existing tables to ensure a clean slate on each run
+        db.also {
+            TransactionManager.manager.defaultIsolationLevel = Connection.TRANSACTION_SERIALIZABLE
+            transaction(it) {
+                addLogger(StdOutSqlLogger)
+                // Drop all existing tables to ensure a clean slate on each run
+                SchemaUtils.drop(*tables)
+                // Create all tables
+                SchemaUtils.create(*tables)
+            }
+        }
 
-    val notImportant = customers.forEach { customer ->
-        (1..10).forEach {
-            dal.createInvoice(
+        val customers = (1..10).mapNotNull {
+            dal.createCustomer(
+                currency = Currency.values()[Random.nextInt(0, Currency.values().size)]
+            )
+        }
+
+        val notImportant = customers.forEach { customer ->
+            (1..10).forEach {
+                dal.createInvoice(
                     amount = Money(
-                            value = BigDecimal(Random.nextDouble(10.0, 500.0)),
-                            currency = customer.currency
+                        value = BigDecimal(Random.nextDouble(10.0, 500.0)),
+                        currency = customer.currency
                     ),
                     customer = customer,
                     status = if (it == 1) InvoiceStatus.PENDING else InvoiceStatus.PAID
-            )
+                )
+            }
         }
     }
+
 
 
     @Test
@@ -86,4 +104,14 @@ class AntaeusDalTest {
         val newStatus = dal.fetchInvoice(pendingInvoices[0].id)?.status
         assertEquals(newStatus, InvoiceStatus.PAID)
     }
+
+    @Test
+    fun `mark invoice as failed should make status field in db`() {
+        val pendingInvoices = dal.fetchInvoicesByStatus(status = InvoiceStatus.PENDING)
+        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.FAILED)
+        val newStatus = dal.fetchInvoice(pendingInvoices[0].id)?.status
+        assertEquals(newStatus, InvoiceStatus.FAILED)
+    }
+
+
 }

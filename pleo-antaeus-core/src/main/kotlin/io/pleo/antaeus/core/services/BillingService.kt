@@ -1,24 +1,37 @@
 package io.pleo.antaeus.core.services
 
+import arrow.core.Either
+import io.pleo.antaeus.core.exceptions.*
 import io.pleo.antaeus.core.external.PaymentProvider
+import io.pleo.antaeus.core.external.PaymentProviderV2
+import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
 
-data class ChargeResults(
-        val invoiceId: Int,
-        val charged: Boolean
-        )
+
+data class SuccessfullyCharged(
+    val invoice: Invoice
+)
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
     private val invoiceService: InvoiceService
 ) {
-// TODO - Add code e.g. here
-    fun chargeForPendingInvoices(): List<ChargeResults> {
-        val pendingInvoices = invoiceService.fetch(InvoiceStatus.PENDING)
-        val chargedResults = pendingInvoices.map{ ChargeResults(it.id, paymentProvider.charge(it))}
-//      TODO - naive filtering of successful payments
-        val successfulCharges = chargedResults.filter { it.charged }
-        successfulCharges.map { invoiceService.markInvoiceAsPaid(it.invoiceId) }
-        return chargedResults
-}
+
+    private val paymentProviderV2 = PaymentProviderV2(paymentProvider)
+
+    fun chargeForPendingInvoices(): List<Either<PaymentException, SuccessfullyCharged>> {
+        return invoiceService.fetch(InvoiceStatus.PENDING)
+            .map { i: Invoice ->
+                paymentProviderV2.charge(i)
+                    .map { invoiceService.markInvoiceAsPaid(it); SuccessfullyCharged(i) }
+                    .mapLeft {
+                        when (it) {
+                            is CurrencyMismatchPaymentException ->  {invoiceService.markInvoiceAsFailed(it.invoice.id);it}
+                            is CustomerNotFoundPaymentException -> {invoiceService.markInvoiceAsFailed(it.invoice.id);it}
+                            is CustomerAccountDidAllowChargePaymentException -> it
+                            is NetworkPaymentException -> it
+                        }
+                    }
+            }
+    }
 }
