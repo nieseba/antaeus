@@ -121,20 +121,23 @@ I'm one of the REST skeptics. My criticism is coming from DDD/CQRS position, as 
 Saying that, I'm thinking about function that we need to perform. For me it's a command like PayPendingInvoices()
 
 I think that we can easily translate it to endpoint such 
-POST rest/v1/billings/pay-pending-invoices
+POST rest/v1/billings/charge-for-pending-invoices
 
 1. I start with adding such REST endpoint. As a novice Kotlin developer, I don't want to spend much time on figuring out the way we could write nice API tests here, so I am taking conscious shortcut here. 
 I think that API could initially return the list invoices ids' that were paid in the process. A quick test, as expected give me empty list
    ```
-   curl -X POST localhost:7000/rest/v1/billings/pay-pending-invoices
+   curl -X POST localhost:7000/rest/v1/billings/charge-for-pending-invoices
    []
    ```
-2. Next, I find out which invoices are pending, so I could attempt payment process. 
+2. I find out which invoices are pending, so I could attempt charging process. 
    I extend the AntaeusDal, so it's possible to fetch invoices by status. 
    I add the test package and test if indeed the fetching works correctly and is filtering by status. 
    I copied the init mechanism for SQLite from AntaeusApp. 
    
-3. 
+3. First attempt to connect charging process with fetching pending invoices and marking successfully charged invoices as paid. Happy path scenario is covered.
+I added tests for BillingService that checks if charging and marking as paid processes are connected properly. Also, new function in AntaeusDal got tested.
+   
+4. 
 
 
 

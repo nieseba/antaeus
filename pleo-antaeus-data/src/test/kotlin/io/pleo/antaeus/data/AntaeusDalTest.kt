@@ -78,4 +78,12 @@ class AntaeusDalTest {
         assertEquals(paidInvoices.count(), 90)
         assertEquals(paidInvoices.map{it.status}.toSet(), setOf(InvoiceStatus.PAID))
     }
+
+    @Test
+    fun `mark invoice as paid should make status field in db`() {
+        val pendingInvoices = dal.fetchInvoicesByStatus(status = InvoiceStatus.PENDING)
+        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.PAID)
+        val newStatus = dal.fetchInvoice(pendingInvoices[0].id)?.status
+        assertEquals(newStatus, InvoiceStatus.PAID)
+    }
 }

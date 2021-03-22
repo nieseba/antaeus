@@ -21,4 +21,8 @@ class InvoiceService(private val dal: AntaeusDal) {
     fun fetch(status: InvoiceStatus): List<Invoice> {
         return dal.fetchInvoicesByStatus(status)
     }
+
+    fun markInvoiceAsPaid(id: Int): Int {
+        return dal.updateInvoice(id, InvoiceStatus.PAID)
+    }
 }

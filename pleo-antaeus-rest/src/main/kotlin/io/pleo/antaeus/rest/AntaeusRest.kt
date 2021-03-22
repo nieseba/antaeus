@@ -83,7 +83,7 @@ class AntaeusRest(
                     path("billings") {
                         //URL: /rest/v1/billings/pay-pending-invoices
                         post ("pay-pending-invoices") {
-                            it.json(billingService.payPendingInvoices())
+                            it.json(billingService.chargeForPendingInvoices())
                         }
                     }
                 }
