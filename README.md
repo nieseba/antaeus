@@ -203,7 +203,24 @@ sqlite> SELECT count(*) FROM Invoice WHERE status='PAID';
 
 Let's commit and think about #6.
 
+6. I would like to audit better what's happening with invoices during charging process. I think that we could have a event log of all the changes that we do to Invoices.
 
+How about the table - InvoicesEvents - that would allow me to track the history of changes to invoices.
+
+```
+sqlite> SELECT * FROM InvoiceEvent WHERE invoice_id = 971;
+
+971|971|created|1616464910942|GBP|485.632064439966|98|PENDING
+1098|971|customer-account-did-not-allow-charge|1616464920455||||PENDING
+1141|971|customer-account-did-not-allow-charge|1616465125963||||PENDING
+1155|971|customer-account-did-not-allow-charge|1616465130150||||PENDING
+1159|971|network-error|1616465131146||||PENDING
+1160|971|network-error|1616465132018||||PENDING
+1161|971|customer-account-did-not-allow-charge|1616465133400||||PENDING
+1162|971|network-error|1616465255070||||PENDING
+1163|971|network-error|1616465257104||||PENDING
+1164|971|currency-mismatch|1616465258885||||FAILED
+```
 
 
    

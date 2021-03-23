@@ -7,14 +7,10 @@
 
 package io.pleo.antaeus.data
 
-import io.pleo.antaeus.models.Currency
-import io.pleo.antaeus.models.Customer
-import io.pleo.antaeus.models.Invoice
-import io.pleo.antaeus.models.InvoiceStatus
-import io.pleo.antaeus.models.Money
+import io.pleo.antaeus.models.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.Instant
 
 class AntaeusDal(private val db: Database) {
     fun fetchInvoice(id: Int): Invoice? {
@@ -45,25 +41,53 @@ class AntaeusDal(private val db: Database) {
 
     }
 
-    fun updateInvoice(id: Int, status: InvoiceStatus): Int {
+    fun updateInvoice(id: Int, status: InvoiceStatus, eventType: String): Int {
         return transaction(db) {
             InvoiceTable
                 .update({ InvoiceTable.id.eq(id) }) {
                     it[InvoiceTable.status] = status.toString()
                 }
+            InvoiceEventTable.insert {
+                it[this.invoiceId] = id
+                it[this.status] = status.toString()
+                it[this.eventType] = eventType
+                it[this.eventTime] = org.joda.time.Instant(Instant.now().toEpochMilli()).toDateTime()
+            } get InvoiceEventTable.id
         }
     }
+
+    fun createInvoiceEvent(id: Int, status: InvoiceStatus, eventType: String): Int {
+        return transaction(db) {
+            InvoiceEventTable.insert {
+                it[this.invoiceId] = id
+                it[this.status] = status.toString()
+                it[this.eventType] = eventType
+                it[this.eventTime] = org.joda.time.Instant(Instant.now().toEpochMilli()).toDateTime()
+            } get InvoiceEventTable.id
+        }
+    }
+
 
     fun createInvoice(amount: Money, customer: Customer, status: InvoiceStatus = InvoiceStatus.PENDING): Invoice? {
         val id = transaction(db) {
             // Insert the invoice and returns its new id.
-            InvoiceTable
+            val invoiceId = InvoiceTable
                 .insert {
                     it[this.value] = amount.value
                     it[this.currency] = amount.currency.toString()
                     it[this.status] = status.toString()
                     it[this.customerId] = customer.id
                 } get InvoiceTable.id
+            InvoiceEventTable.insert {
+                it[this.value] = amount.value
+                it[this.currency] = amount.currency.toString()
+                it[this.status] = status.toString()
+                it[this.customerId] = customer.id
+                it[this.invoiceId] = invoiceId
+                it[this.eventType] = "created"
+                it[this.eventTime] = org.joda.time.Instant(Instant.now().toEpochMilli()).toDateTime()
+            } get InvoiceEventTable.id
+            invoiceId
         }
 
         return fetchInvoice(id)
@@ -96,4 +120,13 @@ class AntaeusDal(private val db: Database) {
 
         return fetchCustomer(id)
     }
+
+    fun fetchInvoiceEvents(invoiceId: Int): List<InvoiceEvent> {
+        return transaction(db) {
+            InvoiceEventTable
+                .select { InvoiceEventTable.invoiceId.eq(invoiceId) }
+                .map { it.toInvoiceEvent() }
+        }
+    }
+
 }

@@ -71,7 +71,7 @@ class BillingServiceTest {
 
         every { invoiceService.markInvoiceAsPaid(invoice1.id) } returns 1
         every { invoiceService.markInvoiceAsPaid(invoice3.id) } returns 1
-        every { invoiceService.markInvoiceAsFailed(invoice2.id) } returns 1
+        every { invoiceService.markInvoiceAsFailed(invoice2.id, any()) } returns 1
 
         val billingService = BillingService(paymentProvider, invoiceService)
         val paidInvoices = billingService.chargeForPendingInvoices()
@@ -106,7 +106,8 @@ class BillingServiceTest {
         every { paymentProvider.charge(invoice3) } returns true
 
         every { invoiceService.markInvoiceAsPaid(invoice3.id) } returns 1
-        every { invoiceService.markInvoiceAsFailed(invoice2.id) } returns 1
+        every { invoiceService.markInvoiceAsFailed(invoice2.id, any()) } returns 1
+        every { invoiceService.traceRetriableError(invoice1.id, any()) } returns 1
 
 
         val billingService = BillingService(paymentProvider, invoiceService)
@@ -124,6 +125,7 @@ class BillingServiceTest {
             paymentProvider.charge(invoice2)
             paymentProvider.charge(invoice3)
             invoiceService.markInvoiceAsPaid(invoice3.id)
+            invoiceService.traceRetriableError(invoice1.id, any())
         }
 
         verify(exactly = 0) {
@@ -144,6 +146,8 @@ class BillingServiceTest {
 
         every { invoiceService.markInvoiceAsPaid(invoice1.id) } returns 1
         every { invoiceService.markInvoiceAsPaid(invoice2.id) } returns 1
+        every { invoiceService.traceRetriableError(invoice2.id, any()) } returns 1
+
 
 
         val billingService = BillingService(paymentProvider, invoiceService)
@@ -153,6 +157,7 @@ class BillingServiceTest {
             paymentProvider.charge(invoice1)
             invoiceService.markInvoiceAsPaid(invoice1.id)
             paymentProvider.charge(invoice2)
+            invoiceService.traceRetriableError(invoice2.id, any())
 
         }
         verify(exactly = 0) {
@@ -172,7 +177,7 @@ class BillingServiceTest {
 
         every { invoiceService.markInvoiceAsPaid(invoice1.id) } returns 1
         every { invoiceService.markInvoiceAsPaid(invoice2.id) } returns 1
-        every { invoiceService.markInvoiceAsFailed(invoice2.id) } returns 1
+        every { invoiceService.markInvoiceAsFailed(invoice2.id, any()) } returns 1
 
 
         val billingService = BillingService(paymentProvider, invoiceService)
@@ -182,7 +187,7 @@ class BillingServiceTest {
             paymentProvider.charge(invoice1)
             invoiceService.markInvoiceAsPaid(invoice1.id)
             paymentProvider.charge(invoice2)
-            invoiceService.markInvoiceAsFailed(invoice2.id)
+            invoiceService.markInvoiceAsFailed(invoice2.id, any())
 
         }
         verify(exactly = 0) {

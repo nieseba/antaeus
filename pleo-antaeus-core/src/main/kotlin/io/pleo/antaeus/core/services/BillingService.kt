@@ -26,10 +26,10 @@ class BillingService(
                     .map { invoiceService.markInvoiceAsPaid(it); SuccessfullyCharged(i) }
                     .mapLeft {
                         when (it) {
-                            is CurrencyMismatchPaymentException ->  {invoiceService.markInvoiceAsFailed(it.invoice.id);it}
-                            is CustomerNotFoundPaymentException -> {invoiceService.markInvoiceAsFailed(it.invoice.id);it}
-                            is CustomerAccountDidAllowChargePaymentException -> it
-                            is NetworkPaymentException -> it
+                            is CurrencyMismatchPaymentException ->  {invoiceService.markInvoiceAsFailed(it.invoice.id, it.name);it}
+                            is CustomerNotFoundPaymentException -> {invoiceService.markInvoiceAsFailed(it.invoice.id, it.name);it}
+                            is CustomerAccountDidAllowChargePaymentException -> {invoiceService.traceRetriableError(it.invoice.id, it.name);it}
+                            is NetworkPaymentException -> {invoiceService.traceRetriableError(it.invoice.id,it.name);it}
                         }
                     }
             }

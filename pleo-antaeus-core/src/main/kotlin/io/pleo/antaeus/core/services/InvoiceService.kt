@@ -23,10 +23,14 @@ class InvoiceService(private val dal: AntaeusDal) {
     }
 
     fun markInvoiceAsPaid(id: Int): Int {
-        return dal.updateInvoice(id, InvoiceStatus.PAID)
+        return dal.updateInvoice(id, InvoiceStatus.PAID, "charged-successfully")
     }
 
-    fun markInvoiceAsFailed(id: Int): Int {
-        return dal.updateInvoice(id, InvoiceStatus.FAILED)
+    fun markInvoiceAsFailed(id: Int, event: String): Int {
+        return dal.updateInvoice(id, InvoiceStatus.FAILED, event)
+    }
+
+    fun traceRetriableError(id: Int, event: String): Int {
+        return dal.createInvoiceEvent(id, InvoiceStatus.PENDING, event)
     }
 }
