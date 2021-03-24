@@ -12,7 +12,7 @@ import io.pleo.antaeus.core.exceptions.PaymentException
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
 import io.pleo.antaeus.core.services.InvoiceService
-import io.pleo.antaeus.core.services.SuccessfullyCharged
+import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -87,10 +87,10 @@ class AntaeusRest(
                         //URL: /rest/v1/billings/charge-for-pending-invoices
                         post ("charge-for-pending-invoices") {
                             it.json(billingService.chargeForPendingInvoices()
-                                .map{ i: Either<PaymentException, SuccessfullyCharged> ->
+                                .map{ i: Either<PaymentException, io.pleo.antaeus.core.external.SuccessfullyCharged> ->
                                     when (i) {
-                                        is Either.Left -> ChargingResponse(i.a.invoice.id, i.a.javaClass.simpleName)
-                                        is Either.Right -> ChargingResponse(i.b.invoice.id, i.b.javaClass.simpleName)
+                                        is Either.Left -> ChargingResponse(i.a.invoice.id, i.a.invoice.status, i.a.eventName)
+                                        is Either.Right -> ChargingResponse(i.b.invoice.id, i.b.invoice.status, i.b.eventName)
                                     }
                                 })
                         }
@@ -100,5 +100,5 @@ class AntaeusRest(
         }
     }
 
-    private class ChargingResponse(val id: Int, val type: String)
+    private data class ChargingResponse(val id: Int, val status: InvoiceStatus, val type: String)
 }

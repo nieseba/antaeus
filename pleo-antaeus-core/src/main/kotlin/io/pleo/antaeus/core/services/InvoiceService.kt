@@ -4,7 +4,9 @@
 
 package io.pleo.antaeus.core.services
 
-import io.pleo.antaeus.core.exceptions.InvoiceNotFoundException
+import arrow.core.Either
+import io.pleo.antaeus.core.exceptions.*
+import io.pleo.antaeus.core.external.SuccessfullyCharged
 import io.pleo.antaeus.data.AntaeusDal
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
@@ -22,15 +24,19 @@ class InvoiceService(private val dal: AntaeusDal) {
         return dal.fetchInvoicesByStatus(status)
     }
 
-    fun markInvoiceAsPaid(id: Int): Int {
-        return dal.updateInvoice(id, InvoiceStatus.PAID, "charged-successfully")
+    private fun storeSuccessfulCharge(successfullyCharged: SuccessfullyCharged): Int {
+        return dal.updateInvoice(successfullyCharged.invoice.id, successfullyCharged.invoice.status,
+            successfullyCharged.eventName, successfullyCharged.eventTime)
     }
 
-    fun markInvoiceAsFailed(id: Int, event: String): Int {
-        return dal.updateInvoice(id, InvoiceStatus.FAILED, event)
+
+    private fun storePaymentException(paymentException: PaymentException): Int {
+        return dal.updateInvoice(paymentException.invoice.id, paymentException.invoice.status,
+            paymentException.eventName, paymentException.eventTime)
     }
 
-    fun traceRetriableError(id: Int, event: String): Int {
-        return dal.createInvoiceEvent(id, InvoiceStatus.PENDING, event)
-    }
+
+    fun processPaymentResult(paymentResult: Either<PaymentException, SuccessfullyCharged>): Either<PaymentException, SuccessfullyCharged> {
+        return paymentResult.bimap({storePaymentException(it); it},{storeSuccessfulCharge(it);it})
+   }
 }

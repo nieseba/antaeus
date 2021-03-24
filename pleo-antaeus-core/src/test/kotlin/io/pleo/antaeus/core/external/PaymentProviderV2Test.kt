@@ -23,7 +23,7 @@ class PaymentProviderV2Test {
         val invoice1 = Invoice(1, 1, Money(BigDecimal(1), Currency.DKK), InvoiceStatus.PENDING)
 
         every { paymentProvider.charge(invoice1) } returns true
-        assertEquals(paymentProcessV2.charge(invoice1), (invoice1.id).right())
+        assertEquals(paymentProcessV2.charge(invoice1), SuccessfullyCharged(invoice1.copy(status = InvoiceStatus.PAID)).right())
     }
 
     @Test
@@ -32,7 +32,7 @@ class PaymentProviderV2Test {
 
         every { paymentProvider.charge(invoice1) } returns false
         paymentProcessV2.charge(invoice1)
-        assertEquals(paymentProcessV2.charge(invoice1), CustomerAccountDidAllowChargePaymentException(invoice1).left())
+        assertEquals(paymentProcessV2.charge(invoice1), CustomerAccountDidNotAllowChargePaymentException(invoice1).left())
     }
 
     @Test
@@ -41,7 +41,7 @@ class PaymentProviderV2Test {
 
         every { paymentProvider.charge(invoice1) } throws CurrencyMismatchException(invoice1.id, invoice1.customerId)
         paymentProcessV2.charge(invoice1)
-        assertEquals(paymentProcessV2.charge(invoice1), CurrencyMismatchPaymentException(invoice1).left())
+        assertEquals(paymentProcessV2.charge(invoice1), CurrencyMismatchPaymentException(invoice1.copy(status = InvoiceStatus.FAILED)).left())
     }
 
     @Test

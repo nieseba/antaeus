@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 import java.math.BigDecimal
 import java.sql.Connection
+import java.time.Instant
 import kotlin.random.Random
 
 class AntaeusDalTest {
@@ -97,7 +98,7 @@ class AntaeusDalTest {
     @Test
     fun `mark invoice as paid should make status field in db`() {
         val pendingInvoices = dal.fetchInvoicesByStatus(status = InvoiceStatus.PENDING)
-        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.PAID, "Successful")
+        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.PAID, "Successful", Instant.now())
         val newStatus = dal.fetchInvoice(pendingInvoices[0].id)?.status
         assertEquals(newStatus, InvoiceStatus.PAID)
     }
@@ -105,7 +106,7 @@ class AntaeusDalTest {
     @Test
     fun `mark invoice as failed should make status field in db`() {
         val pendingInvoices = dal.fetchInvoicesByStatus(status = InvoiceStatus.PENDING)
-        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.FAILED, "ERROR")
+        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.FAILED, "ERROR", Instant.now())
         val newStatus = dal.fetchInvoice(pendingInvoices[0].id)?.status
         assertEquals(newStatus, InvoiceStatus.FAILED)
     }
@@ -123,7 +124,7 @@ class AntaeusDalTest {
     @Test
     fun `mark invoice as failed should create entry in event log`() {
         val pendingInvoices = dal.fetchInvoicesByStatus(status = InvoiceStatus.PENDING)
-        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.FAILED, "ERROR")
+        dal.updateInvoice(pendingInvoices[0].id, InvoiceStatus.FAILED, "ERROR", Instant.now())
 
         val invoiceEvents = dal.fetchInvoiceEvents(pendingInvoices[0].id)
         assertEquals(2, invoiceEvents.size)

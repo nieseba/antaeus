@@ -87,14 +87,15 @@ The code given is structured as follows. Feel free however to modify the structu
 
 Happy hacking 😁!
 
-### Seb's reasoning
+
+#### Seb's reasoning
 
 >As most "Software as a Service" (SaaS) companies, Pleo needs to charge a subscription fee every month. 
 >Our database contains a few invoices for the different markets in which we operate. 
 >Your task is to build the logic that will schedule payment of those invoices on the first of the month.
 >While this may seem simple, there is space for some decisions to be taken and you will be expected to justify them.
 
-Design choices 
+####Design choices
 
 I assume that we operate in a single Bounded Context from Domain-Driven-Design perspective and Antaeus's covering currently Invoice/Billing domain. 
 
@@ -108,20 +109,22 @@ We have an external Payments Provider service that could result in
 
 The task is to build the logic that will schedule payment of those invoices on the first of month.
 
-The first decision is that I made is to separate the "scheduler" part from main application. Two reasons
+The first decision is that I make is **to separate the "scheduler" part from main application**. Two main reasons
 - first if we intend run the Antaeus in HA mode (multiple instances of application), running a scheduler in each instance does not look like the good idea.
 - if we use the container orchestrator (like Kubernetes) we can easily manage [cron jobs on a repeating schedule.](#https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 
-It implies that our application should expose the API to pay for pending invoices.
+It implies that our application could expose the API to pay for pending invoices that scheduler can call
 
-So how we should design the endpoint?
+####How we should design the endpoint?
 
 I'm one of the REST skeptics. My criticism is coming from DDD/CQRS position, as my thinking is much more action/intent oriented than REST noun/resource orientation.
 
 Saying that, I'm thinking about function that we need to perform. For me it's a command like ChargeForPendingInvoices()
 
 I think that we can easily translate it to endpoint such 
+```
 POST rest/v1/billings/charge-for-pending-invoices
+```
 
 1. I start with adding such REST endpoint. As a novice Kotlin developer, I don't want to spend much time on figuring out the way we could write nice API tests here, so I am taking conscious shortcut here. 
 I think that API could initially return the list invoices ids' that were paid in the process. A quick test, as expected give me empty list
@@ -137,16 +140,14 @@ I think that API could initially return the list invoices ids' that were paid in
 3. First attempt to connect charging process with fetching pending invoices and marking successfully charged invoices as paid. Happy path scenario is covered.
 I added tests for BillingService that checks if charging and marking as paid processes are connected properly. Also, new function in AntaeusDal got tested.
    
-4. There're three immediate not-happy kinds of scenarios that I should think about
+4. There are three unhappy types of scenarios that I should consider
    * payment provider return false that account did not allow the charge
       * this is a domain error, product owner/manager should decide what do in such case. 
-      I would say for purposes of the task, that we should mark the account as "account-did-not-allow-charge" that allows the CS team to take an action. 
         That error is retriable, so we can continue to try charge for invoice.
         Invoice can remain in pending state.
    * `CustomerNotFoundException` / `CurrencyMismatchException`
       * this is a domain error, product owner/manager should decide what do in such case.
-        I would say for purposes of the task, that we should flag the invoice as "customer-not-found" or "currency-mismatch-exception" 
-        that allows the CS team to take an action. That error is not-retriable, so we should not continue to try charge for customer invoices before its fixed.
+        That error is not-retriable, so we should not continue to try charge for customer invoices before its fixed.
         Invoice should change to failed state.
    * `NetworkException`: when a network error happens.
       * this is a technical error, 
@@ -159,9 +160,7 @@ I added tests for BillingService that checks if charging and marking as paid pro
    
    That implies that `AccountDidNotAllowToCharge` and `NetworkException` are two events that allow invoices to retry charging safely
    `CustomerNotFoundException` / `CurrencyMismatchException` are two events that blocks recharge process unless it's solved through manual process 
-   that I put a bit out of the scope for this task.
-   
-   That implies that I need to mark invoices as failed if they ended up in such a state.
+   that I put outside the scope of this exercise.
     
 5. I would like to rework the exceptions, as I hope that we can get better in Kotlin!
 
@@ -187,7 +186,7 @@ If I repeat charging process I would expect a bunch of more paid invoices
    ```
 That's good, for invoice #1 (that failed first time) charging process was repeated, Charging process for Invoice #991 (that was paid) was not repeated.
 
-After few repeats, I see that there're no more pendign invoices 
+After few repeats, I see that there're no more pending invoices 
 
 ```
 curl -X POST localhost:7000/rest/v1/billings/charge-for-pending-invoices
@@ -203,9 +202,9 @@ sqlite> SELECT count(*) FROM Invoice WHERE status='PAID';
 
 Let's commit and think about #6.
 
-6. I would like to audit better what's happening with invoices during charging process. I think that we could have a event log of all the changes that we do to Invoices.
+6. I would like to audit better what's happening with invoices during charging process. I think that we could have an event log of all the changes that we apply to invoices.
 
-How about the table - InvoicesEvents - that would allow me to track the history of changes to invoices.
+How about the table - InvoiceEvent - that would allow me to track the history of changes made to invoices.
 
 ```
 sqlite> SELECT * FROM InvoiceEvent WHERE invoice_id = 971;
@@ -222,14 +221,13 @@ sqlite> SELECT * FROM InvoiceEvent WHERE invoice_id = 971;
 1164|971|currency-mismatch|1616465258885||||FAILED
 ```
 
+Take example for successfully paid invoice
+```SELECT * FROM InvoiceEvent WHERE invoice_id = 561;
+561|561|created|1616464907732|USD|239.918188301433|57|PENDING
+1057|561|network-error|1616464920221||||PENDING
+1118|561|network-error|1616465125840||||PENDING
+1149|561|ChargedSuccessfully|1616465130118||||PAID
+```
 
-   
-  
-           
-
-
-
-
-
-
+7. Clean up, refactor, rebuild & retest!
 

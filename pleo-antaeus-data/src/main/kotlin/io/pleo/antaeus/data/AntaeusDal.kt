@@ -41,7 +41,7 @@ class AntaeusDal(private val db: Database) {
 
     }
 
-    fun updateInvoice(id: Int, status: InvoiceStatus, eventType: String): Int {
+    fun updateInvoice(id: Int, status: InvoiceStatus, eventType: String, eventTime: Instant): Int {
         return transaction(db) {
             InvoiceTable
                 .update({ InvoiceTable.id.eq(id) }) {
@@ -51,7 +51,7 @@ class AntaeusDal(private val db: Database) {
                 it[this.invoiceId] = id
                 it[this.status] = status.toString()
                 it[this.eventType] = eventType
-                it[this.eventTime] = org.joda.time.Instant(Instant.now().toEpochMilli()).toDateTime()
+                it[this.eventTime] = org.joda.time.Instant(eventTime.toEpochMilli()).toDateTime()
             } get InvoiceEventTable.id
         }
     }
