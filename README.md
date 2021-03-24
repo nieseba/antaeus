@@ -117,7 +117,7 @@ It implies that our application could expose the API to pay for pending invoices
 
 ####How we should design the endpoint?
 
-I'm one of the REST skeptics. My criticism is coming from DDD/CQRS position, as my thinking is much more action/intent oriented than REST noun/resource orientation.
+I'm not a REST-ful fanatic. My criticism is coming from DDD/CQRS position, as my thinking is much more action/intent oriented than REST noun/resource orientation.
 
 Saying that, I'm thinking about function that we need to perform. For me it's a command like ChargeForPendingInvoices()
 
@@ -231,3 +231,12 @@ Take example for successfully paid invoice
 
 7. Clean up, refactor, rebuild & retest!
 
+8. Future consideration
+* Currently, it's single threaded app. For a purpose of exercise I think that's ok, but depending on non-functional requirements
+  (number of invoices, SLA for charging process) we might need to reconsider the approach
+* If we would like to redistribute a workload, we might to consider event-driven solution that would decouple scheduling of payments from 
+execution of payments through payment provider. This could be done e.g. through Kafka broker
+* The filtering & loading of all "pending" invoices might require adding some index to db and we might need to check how it's going to behave
+if number of invoices started to grow in numbers.
+  
+### That's it, cheers.
