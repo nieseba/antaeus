@@ -238,5 +238,7 @@ Take example for successfully paid invoice
 execution of payments through payment provider. This could be done e.g. through Kafka broker
 * The filtering & loading of all "pending" invoices might require adding some index to db and we might need to check how it's going to behave
 if number of invoices started to grow in numbers.
+* From an operational standpoint I would surely consider triggering alerts whenever charging was not succesful, 
+  so we got alerted whenever there are potential issues that should be investigated.
   
 ### That's it, cheers.
