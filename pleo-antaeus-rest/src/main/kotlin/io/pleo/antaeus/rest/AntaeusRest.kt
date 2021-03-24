@@ -4,12 +4,15 @@
 
 package io.pleo.antaeus.rest
 
+import arrow.core.Either
 import io.javalin.Javalin
-import io.javalin.apibuilder.ApiBuilder.get
-import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.apibuilder.ApiBuilder.*
 import io.pleo.antaeus.core.exceptions.EntityNotFoundException
+import io.pleo.antaeus.core.exceptions.PaymentException
+import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
 import io.pleo.antaeus.core.services.InvoiceService
+import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -17,7 +20,8 @@ private val thisFile: () -> Unit = {}
 
 class AntaeusRest(
     private val invoiceService: InvoiceService,
-    private val customerService: CustomerService
+    private val customerService: CustomerService,
+    private val billingService: BillingService
 ) : Runnable {
 
     override fun run() {
@@ -78,8 +82,23 @@ class AntaeusRest(
                             it.json(customerService.fetch(it.pathParam("id").toInt()))
                         }
                     }
+                    // URL: /rest/v1/billings
+                    path("billings") {
+                        //URL: /rest/v1/billings/charge-for-pending-invoices
+                        post ("charge-for-pending-invoices") {
+                            it.json(billingService.chargeForPendingInvoices()
+                                .map{ i: Either<PaymentException, io.pleo.antaeus.core.external.SuccessfullyCharged> ->
+                                    when (i) {
+                                        is Either.Left -> ChargingResponse(i.a.invoice.id, i.a.invoice.status, i.a.eventName)
+                                        is Either.Right -> ChargingResponse(i.b.invoice.id, i.b.invoice.status, i.b.eventName)
+                                    }
+                                })
+                        }
+                    }
                 }
             }
         }
     }
+
+    private data class ChargingResponse(val id: Int, val status: InvoiceStatus, val type: String)
 }

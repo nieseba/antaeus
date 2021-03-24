@@ -1,4 +1,5 @@
 
+import io.pleo.antaeus.core.exceptions.*
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.data.AntaeusDal
 import io.pleo.antaeus.models.Currency
@@ -7,6 +8,7 @@ import io.pleo.antaeus.models.InvoiceStatus
 import io.pleo.antaeus.models.Money
 import java.math.BigDecimal
 import kotlin.random.Random
+import kotlin.math.abs
 
 // This will create all schemas and setup initial data
 internal fun setupInitialData(dal: AntaeusDal) {
@@ -34,7 +36,15 @@ internal fun setupInitialData(dal: AntaeusDal) {
 internal fun getPaymentProvider(): PaymentProvider {
     return object : PaymentProvider {
         override fun charge(invoice: Invoice): Boolean {
-                return Random.nextBoolean()
+            val random = abs(Random.nextInt())
+            return when (random % 5) {
+                0 -> true
+                1 -> false
+                2 -> throw CurrencyMismatchException(invoice.id, invoice.customerId)
+                3 -> throw CustomerNotFoundException(invoice.customerId)
+                4 -> throw NetworkException()
+                else -> throw Exception("when choosing charging responses")
+            }
         }
     }
 }

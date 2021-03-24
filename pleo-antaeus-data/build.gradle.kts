@@ -8,4 +8,5 @@ dataLibs()
 
 dependencies {
     api(project(":pleo-antaeus-models"))
+
 }
